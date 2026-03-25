@@ -1,0 +1,126 @@
+basePath: /
+consumes:
+- multipart/form-data
+definitions:
+  domain.TranscriptionRecord:
+    properties:
+      Id:
+        description: ID is auto-assigned by RavenDB as "transcriptions/N-A".
+        example: transcriptions/1-A
+        type: string
+      audioDuration:
+        example: 47.3
+        type: number
+      audioFilename:
+        description: Audio file metadata.
+        example: meeting.mp3
+        type: string
+      createdAt:
+        description: Metadata.
+        type: string
+      fileSizeBytes:
+        example: 2097152
+        type: integer
+      keyPoints:
+        items:
+          type: string
+        type: array
+      language:
+        example: en
+        type: string
+      sentiment:
+        example: positive
+        type: string
+      summary:
+        description: AI analysis from Google Gemini — stored as nested document, schema-free.
+        type: string
+      transcript:
+        description: Transcription result from OpenAI Whisper.
+        example: Hello, this is a test recording...
+        type: string
+    type: object
+  handler.ErrorResponse:
+    description: Standardized error response
+    properties:
+      error:
+        example: audio field is required
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: 'POC: receives audio, transcribes with OpenAI Whisper, analyzes with
+    Google Gemini, persists in RavenDB.'
+  title: Audio Transcription API
+  version: "1.0"
+paths:
+  /transcribe:
+    post:
+      consumes:
+      - multipart/form-data
+      description: |-
+        Receives an audio file upload, transcribes it with OpenAI Whisper,
+        analyzes the transcript with Google Gemini, and persists the result in RavenDB.
+      parameters:
+      - description: Audio file (mp3, mp4, wav, m4a, ogg, webm, flac — max 25MB)
+        in: formData
+        name: audio
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/domain.TranscriptionRecord'
+        "400":
+          description: Missing 'audio' field
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "413":
+          description: File exceeds MAX_UPLOAD_BYTES
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal server error or RavenDB failure
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "502":
+          description: Upstream API failure (Whisper or Gemini)
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Transcribe an audio file
+      tags:
+      - transcription
+  /transcriptions:
+    get:
+      description: Returns paginated transcriptions ordered by creation date descending.
+      parameters:
+      - description: Number of records to return (default 20)
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.TranscriptionRecord'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: List stored transcriptions
+      tags:
+      - transcription
+produces:
+- application/json
+swagger: "2.0"

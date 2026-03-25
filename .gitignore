@@ -33,5 +33,5 @@ go.work.sum
 .DS_Store
 Thumbs.db
 
-# Swagger generated docs (regenerate with: swag init)
-docs/
+# Swagger generated docs can be committed or regenerated with:
+# swag init -g cmd/server/main.go --output docs
