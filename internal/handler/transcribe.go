@@ -3,6 +3,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -45,8 +46,8 @@ func NewHandler(
 // Transcribe godoc
 //
 //	@Summary		Transcribe an audio file
-//	@Description	Receives an audio file upload, transcribes it with OpenAI Whisper,
-//	@Description	analyzes the transcript with Google Gemini, and persists the result in RavenDB.
+//	@Description	Receives an audio file upload, transcribes and analyzes it with Google Gemini,
+//	@Description	and persists the result in RavenDB.
 //	@Tags			transcription
 //	@Accept			multipart/form-data
 //	@Produce		json
@@ -54,8 +55,9 @@ func NewHandler(
 //	@Success		201		{object}	domain.TranscriptionRecord
 //	@Failure		400		{object}	ErrorResponse	"Missing 'audio' field"
 //	@Failure		413		{object}	ErrorResponse	"File exceeds MAX_UPLOAD_BYTES"
+//	@Failure		503		{object}	ErrorResponse	"Required AI provider is not configured"
 //	@Failure		500		{object}	ErrorResponse	"Internal server error or RavenDB failure"
-//	@Failure		502		{object}	ErrorResponse	"Upstream API failure (Whisper or Gemini)"
+//	@Failure		502		{object}	ErrorResponse	"Upstream API failure from Gemini"
 //	@Router			/transcribe [post]
 func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -75,12 +77,20 @@ func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.transcriber.Transcribe(ctx, header.Filename, file)
 	if err != nil {
+		if errors.Is(err, transcription.ErrProviderDisabled) {
+			writeJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, ErrorResponse{Error: fmt.Sprintf("transcription failed: %v", err)})
 		return
 	}
 
 	analysis, err := h.analyzer.Analyze(ctx, result.Text)
 	if err != nil {
+		if errors.Is(err, ai.ErrProviderDisabled) {
+			writeJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusBadGateway, ErrorResponse{Error: fmt.Sprintf("AI analysis failed: %v", err)})
 		return
 	}

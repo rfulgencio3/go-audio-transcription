@@ -38,8 +38,8 @@ func (m *mockAnalyzer) Analyze(_ context.Context, _ string) (ai.Analysis, error)
 }
 
 type mockRepository struct {
-	saved  *domain.TranscriptionRecord
-	listed []*domain.TranscriptionRecord
+	saved   *domain.TranscriptionRecord
+	listed  []*domain.TranscriptionRecord
 	saveErr error
 	listErr error
 }
@@ -102,20 +102,20 @@ func TestHandler_Transcribe(t *testing.T) {
 		wantField      string // JSON field expected in response body
 	}{
 		{
-			name:        "happy path returns 201 with transcript",
-			transcriber: happyTranscriber,
-			analyzer:    happyAnalyzer,
-			repo:        &mockRepository{},
-			buildReq:    func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
+			name:           "happy path returns 201 with transcript",
+			transcriber:    happyTranscriber,
+			analyzer:       happyAnalyzer,
+			repo:           &mockRepository{},
+			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
 			wantStatusCode: http.StatusCreated,
 			wantField:      "transcript",
 		},
 		{
-			name:        "missing audio field returns 400",
-			transcriber: happyTranscriber,
-			analyzer:    happyAnalyzer,
-			repo:        &mockRepository{},
-			buildReq:    func(t *testing.T) *http.Request { return newMultipartRequest(t, "", "", nil) },
+			name:           "missing audio field returns 400",
+			transcriber:    happyTranscriber,
+			analyzer:       happyAnalyzer,
+			repo:           &mockRepository{},
+			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "", "", nil) },
 			wantStatusCode: http.StatusBadRequest,
 			wantField:      "error",
 		},
@@ -135,6 +135,24 @@ func TestHandler_Transcribe(t *testing.T) {
 			repo:           &mockRepository{},
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
 			wantStatusCode: http.StatusBadGateway,
+			wantField:      "error",
+		},
+		{
+			name:           "disabled transcriber returns 503",
+			transcriber:    transcription.NewDisabledTranscriber("GEMINI_API_KEY is not set"),
+			analyzer:       happyAnalyzer,
+			repo:           &mockRepository{},
+			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
+			wantStatusCode: http.StatusServiceUnavailable,
+			wantField:      "error",
+		},
+		{
+			name:           "disabled analyzer returns 503",
+			transcriber:    happyTranscriber,
+			analyzer:       ai.NewDisabledAnalyzer("GEMINI_API_KEY is not set"),
+			repo:           &mockRepository{},
+			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
+			wantStatusCode: http.StatusServiceUnavailable,
 			wantField:      "error",
 		},
 		{

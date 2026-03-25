@@ -23,7 +23,7 @@ const docTemplate = `{
     "paths": {
         "/transcribe": {
             "post": {
-                "description": "Receives an audio file upload, transcribes it with OpenAI Whisper,\nanalyzes the transcript with Google Gemini, and persists the result in RavenDB.",
+                "description": "Receives an audio file upload, transcribes and analyzes it with Google Gemini,\nand persists the result in RavenDB.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -69,7 +69,13 @@ const docTemplate = `{
                         }
                     },
                     "502": {
-                        "description": "Upstream API failure (Whisper or Gemini)",
+                        "description": "Upstream API failure from Gemini",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Required AI provider is not configured",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -166,7 +172,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transcript": {
-                    "description": "Transcription result from OpenAI Whisper.",
+                    "description": "Transcription result from Gemini audio understanding.",
                     "type": "string",
                     "example": "Hello, this is a test recording..."
                 }
@@ -192,7 +198,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Audio Transcription API",
-	Description:      "POC: receives audio, transcribes with OpenAI Whisper, analyzes with Google Gemini, persists in RavenDB.",
+	Description:      "POC: receives audio, transcribes and analyzes with Google Gemini, persists in RavenDB.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

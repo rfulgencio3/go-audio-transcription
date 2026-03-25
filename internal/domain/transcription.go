@@ -13,7 +13,7 @@ type TranscriptionRecord struct {
 	AudioFilename string `json:"audioFilename" example:"meeting.mp3"`
 	FileSizeBytes int64  `json:"fileSizeBytes" example:"2097152"`
 
-	// Transcription result from OpenAI Whisper.
+	// Transcription result from Gemini audio understanding.
 	Transcript    string  `json:"transcript" example:"Hello, this is a test recording..."`
 	Language      string  `json:"language,omitempty" example:"en"`
 	AudioDuration float64 `json:"audioDuration,omitempty" example:"47.3"`

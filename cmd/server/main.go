@@ -2,7 +2,7 @@
 //
 //	@title			Audio Transcription API
 //	@version		1.0
-//	@description	POC: receives audio, transcribes with OpenAI Whisper, analyzes with Google Gemini, persists in RavenDB.
+//	@description	POC: receives audio, transcribes and analyzes with Google Gemini, persists in RavenDB.
 //	@host			localhost:8080
 //	@BasePath		/
 //	@accept			multipart/form-data
@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/joho/godotenv"
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/rfulgencio3/go-audio-transcription/config"
@@ -31,11 +30,6 @@ import (
 )
 
 func main() {
-	// Load .env in development — ignored if the file does not exist.
-	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
-		log.Printf("warn: could not load .env file: %v", err)
-	}
-
 	cfg, err := config.LoadFromEnv()
 	if err != nil {
 		log.Fatalf("config error: %v", err)
@@ -43,21 +37,39 @@ func main() {
 
 	// --- Build dependencies ---
 
-	// Transcription: OpenAI Whisper
-	whisper := transcription.NewWhisperTranscriber(cfg.OpenAI.APIKey)
-
-	// AI Analysis: Google Gemini
-	initCtx, initCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	gemini, err := ai.NewGeminiAnalyzer(initCtx, cfg.Gemini.APIKey, cfg.Gemini.ModelName)
-	initCancel()
-	if err != nil {
-		log.Fatalf("gemini init error: %v", err)
-	}
-	defer func() {
-		if err := gemini.Close(); err != nil {
-			log.Printf("warn: closing Gemini client: %v", err)
+	// Transcription + analysis: Google Gemini
+	var transcriber transcription.Transcriber
+	var analyzer ai.Analyzer
+	if cfg.Gemini.APIKey == "" {
+		log.Printf("warn: GEMINI_API_KEY is not set; /transcribe pipeline is disabled")
+		transcriber = transcription.NewDisabledTranscriber("GEMINI_API_KEY is not set")
+		analyzer = ai.NewDisabledAnalyzer("GEMINI_API_KEY is not set")
+	} else {
+		initCtx, initCancel := context.WithTimeout(context.Background(), 15*time.Second)
+		geminiTranscriber, err := transcription.NewGeminiTranscriber(initCtx, cfg.Gemini.APIKey, cfg.Gemini.ModelName)
+		if err != nil {
+			initCancel()
+			log.Fatalf("gemini transcription init error: %v", err)
 		}
-	}()
+		gemini, err := ai.NewGeminiAnalyzer(initCtx, cfg.Gemini.APIKey, cfg.Gemini.ModelName)
+		initCancel()
+		if err != nil {
+			_ = geminiTranscriber.Close()
+			log.Fatalf("gemini init error: %v", err)
+		}
+		transcriber = geminiTranscriber
+		analyzer = gemini
+		defer func() {
+			if err := geminiTranscriber.Close(); err != nil {
+				log.Printf("warn: closing Gemini transcription client: %v", err)
+			}
+		}()
+		defer func() {
+			if err := gemini.Close(); err != nil {
+				log.Printf("warn: closing Gemini client: %v", err)
+			}
+		}()
+	}
 
 	// Storage: RavenDB
 	repo, err := storage.NewRavenDBRepository(cfg.RavenDB.URLs, cfg.RavenDB.DatabaseName)
@@ -67,7 +79,7 @@ func main() {
 	defer repo.Close()
 
 	// --- Wire HTTP routes ---
-	h := handler.NewHandler(whisper, gemini, repo, cfg.Server.MaxUploadBytes)
+	h := handler.NewHandler(transcriber, analyzer, repo, cfg.Server.MaxUploadBytes)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /transcribe", h.Transcribe)

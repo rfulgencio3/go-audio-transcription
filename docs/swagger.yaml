@@ -35,7 +35,7 @@ definitions:
         description: AI analysis from Google Gemini — stored as nested document, schema-free.
         type: string
       transcript:
-        description: Transcription result from OpenAI Whisper.
+        description: Transcription result from Gemini audio understanding.
         example: Hello, this is a test recording...
         type: string
     type: object
@@ -49,8 +49,8 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: 'POC: receives audio, transcribes with OpenAI Whisper, analyzes with
-    Google Gemini, persists in RavenDB.'
+  description: 'POC: receives audio, transcribes and analyzes with Google Gemini,
+    persists in RavenDB.'
   title: Audio Transcription API
   version: "1.0"
 paths:
@@ -59,8 +59,8 @@ paths:
       consumes:
       - multipart/form-data
       description: |-
-        Receives an audio file upload, transcribes it with OpenAI Whisper,
-        analyzes the transcript with Google Gemini, and persists the result in RavenDB.
+        Receives an audio file upload, transcribes and analyzes it with Google Gemini,
+        and persists the result in RavenDB.
       parameters:
       - description: Audio file (mp3, mp4, wav, m4a, ogg, webm, flac — max 25MB)
         in: formData
@@ -87,7 +87,11 @@ paths:
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "502":
-          description: Upstream API failure (Whisper or Gemini)
+          description: Upstream API failure from Gemini
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "503":
+          description: Required AI provider is not configured
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Transcribe an audio file

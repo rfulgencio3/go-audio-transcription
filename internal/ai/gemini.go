@@ -2,11 +2,10 @@ package ai
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/google/generative-ai-go/genai"
+	"github.com/rfulgencio3/go-audio-transcription/internal/geminiutil"
 	"google.golang.org/api/option"
 )
 
@@ -60,25 +59,9 @@ func (g *GeminiAnalyzer) Analyze(ctx context.Context, transcript string) (Analys
 		return Analysis{}, fmt.Errorf("ai.Analyze: generating content: %w", err)
 	}
 
-	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
-		return Analysis{}, fmt.Errorf("ai.Analyze: empty response from Gemini")
-	}
-
-	raw, ok := resp.Candidates[0].Content.Parts[0].(genai.Text)
-	if !ok {
-		return Analysis{}, fmt.Errorf("ai.Analyze: unexpected response part type from Gemini")
-	}
-
-	// Gemini may wrap JSON in markdown fences — strip them before unmarshalling.
-	cleaned := strings.TrimSpace(string(raw))
-	cleaned = strings.TrimPrefix(cleaned, "```json")
-	cleaned = strings.TrimPrefix(cleaned, "```")
-	cleaned = strings.TrimSuffix(cleaned, "```")
-	cleaned = strings.TrimSpace(cleaned)
-
 	var gr geminiResponse
-	if err := json.Unmarshal([]byte(cleaned), &gr); err != nil {
-		return Analysis{}, fmt.Errorf("ai.Analyze: parsing Gemini JSON response: %w", err)
+	if err := geminiutil.UnmarshalJSONTextResponse(resp, &gr); err != nil {
+		return Analysis{}, fmt.Errorf("ai.Analyze: %w", err)
 	}
 
 	return Analysis{

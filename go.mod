@@ -4,9 +4,7 @@ go 1.25.0
 
 require (
 	github.com/google/generative-ai-go v0.20.1
-	github.com/joho/godotenv v1.5.1
 	github.com/ravendb/ravendb-go-client v0.0.0-20240723121956-2b87f37fe427
-	github.com/sashabaranov/go-openai v1.41.2
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.6
 	google.golang.org/api v0.272.0

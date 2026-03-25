@@ -6,18 +6,18 @@ A Go POC for end-to-end audio transcription with AI analysis and document persis
 
 This project validates a complete audio transcription pipeline:
 
-**Receive audio → Transcribe (Whisper) → Analyze with AI (Gemini) → Persist (RavenDB)**
+**Receive audio → Transcribe with Gemini → Analyze with Gemini → Persist**
 
 ## Stack
 
 | Layer        | Technology                                   |
 |--------------|----------------------------------------------|
 | HTTP Server  | Go standard `net/http`                       |
-| Transcription| OpenAI Whisper API                           |
+| Transcription| Google Gemini API                            |
 | AI Analysis  | Google Gemini API                            |
 | Database     | RavenDB (document store)                     |
 | API Docs     | Swagger via `swaggo/swag`                    |
-| Config       | Environment variables + `godotenv`           |
+| Config       | Environment variables                        |
 
 ## Architecture
 
@@ -26,8 +26,8 @@ Audio transcription records are naturally document-shaped — a single record ag
 ```
 POST /transcribe  (multipart: field "audio")
   ├─ Validate file size and content-type
-  ├─ Transcribe audio → text  (OpenAI Whisper)
-  ├─ Analyze transcript        (Google Gemini)
+  ├─ Transcribe audio → text  (Gemini)
+  ├─ Analyze transcript       (Gemini)
   ├─ Persist document          (RavenDB)
   └─ Return JSON 201
 ```
@@ -46,25 +46,23 @@ POST /transcribe  (multipart: field "audio")
 
 - Go 1.21+
 - RavenDB instance (local or cloud — [Railway](https://railway.app) recommended)
-- OpenAI API key
 - Google Gemini API key
 
 ### Configuration
 
-```bash
-cp .env.example .env
-# Edit .env with your API keys and RavenDB URL
-```
+Configure these variables in the Railway service settings:
 
 | Variable             | Description                        | Default              |
 |----------------------|------------------------------------|----------------------|
-| `ADDR`               | HTTP listen address                | `:8080`              |
+| `ADDR`               | HTTP listen address                | `:$PORT` or `:8080`  |
+| `PORT`               | Platform-provided port fallback    | optional             |
 | `MAX_UPLOAD_BYTES`   | Max audio file size in bytes       | `26214400` (25MB)    |
-| `OPENAI_API_KEY`     | OpenAI API key                     | required             |
-| `GEMINI_API_KEY`     | Google Gemini API key              | required             |
+| `GEMINI_API_KEY`     | Google Gemini API key              | optional at startup, required for `/transcribe` |
 | `GEMINI_MODEL`       | Gemini model name                  | `gemini-1.5-flash`   |
 | `RAVENDB_URLS`       | Comma-separated RavenDB URLs       | `http://localhost:8080` |
 | `RAVENDB_DATABASE`   | RavenDB database name              | `AudioTranscriptions` |
+
+If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable` until Gemini is configured.
 
 ### Run
 

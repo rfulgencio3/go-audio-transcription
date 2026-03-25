@@ -1,5 +1,4 @@
 // Package config loads all application configuration from environment variables.
-// No configuration is hardcoded. Use a .env file (via godotenv) in development.
 package config
 
 import (
@@ -23,7 +22,6 @@ const (
 // Config holds all runtime configuration for the application.
 type Config struct {
 	Server  ServerConfig
-	OpenAI  OpenAIConfig
 	Gemini  GeminiConfig
 	RavenDB RavenDBConfig
 }
@@ -34,11 +32,6 @@ type ServerConfig struct {
 	ReadTimeout    time.Duration
 	WriteTimeout   time.Duration
 	MaxUploadBytes int64
-}
-
-// OpenAIConfig holds OpenAI API credentials.
-type OpenAIConfig struct {
-	APIKey string
 }
 
 // GeminiConfig holds Google Gemini API credentials.
@@ -54,28 +47,13 @@ type RavenDBConfig struct {
 }
 
 // LoadFromEnv reads all configuration from environment variables.
-// Returns a descriptive error listing any missing required variables.
 func LoadFromEnv() (Config, error) {
-	var missing []string
-
-	openaiKey := os.Getenv("OPENAI_API_KEY")
-	if openaiKey == "" {
-		missing = append(missing, "OPENAI_API_KEY")
-	}
-
 	geminiKey := os.Getenv("GEMINI_API_KEY")
-	if geminiKey == "" {
-		missing = append(missing, "GEMINI_API_KEY")
-	}
 
 	ravenURLsRaw := getEnvOrDefault("RAVENDB_URLS", defaultRavenDBURLs)
 	ravenURLs := strings.Split(ravenURLsRaw, ",")
 	for i := range ravenURLs {
 		ravenURLs[i] = strings.TrimSpace(ravenURLs[i])
-	}
-
-	if len(missing) > 0 {
-		return Config{}, fmt.Errorf("config: missing required environment variables: %s", strings.Join(missing, ", "))
 	}
 
 	maxUploadBytes, err := parseInt64Env("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
@@ -85,13 +63,10 @@ func LoadFromEnv() (Config, error) {
 
 	return Config{
 		Server: ServerConfig{
-			Addr:           getEnvOrDefault("ADDR", defaultAddr),
+			Addr:           getServerAddr(),
 			ReadTimeout:    defaultReadTimeout,
 			WriteTimeout:   defaultWriteTimeout,
 			MaxUploadBytes: maxUploadBytes,
-		},
-		OpenAI: OpenAIConfig{
-			APIKey: openaiKey,
 		},
 		Gemini: GeminiConfig{
 			APIKey:    geminiKey,
@@ -102,6 +77,16 @@ func LoadFromEnv() (Config, error) {
 			DatabaseName: getEnvOrDefault("RAVENDB_DATABASE", defaultRavenDBName),
 		},
 	}, nil
+}
+
+func getServerAddr() string {
+	if addr := os.Getenv("ADDR"); addr != "" {
+		return addr
+	}
+	if port := os.Getenv("PORT"); port != "" {
+		return ":" + port
+	}
+	return defaultAddr
 }
 
 func getEnvOrDefault(key, defaultVal string) string {
