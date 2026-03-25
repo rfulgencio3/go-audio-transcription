@@ -21,6 +21,26 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/health": {
+            "get": {
+                "description": "Returns 200 when the HTTP service is running.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Service health",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handler.HealthResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/transcribe": {
             "post": {
                 "description": "Receives an audio file upload, transcribes and analyzes it with Google Gemini,\nand persists the result in RavenDB.",
@@ -185,6 +205,15 @@ const docTemplate = `{
                 "error": {
                     "type": "string",
                     "example": "audio field is required"
+                }
+            }
+        },
+        "handler.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "ok"
                 }
             }
         }

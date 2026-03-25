@@ -20,6 +20,11 @@ type ErrorResponse struct {
 	Error string `json:"error" example:"audio field is required"`
 }
 
+// HealthResponse represents the service health status.
+type HealthResponse struct {
+	Status string `json:"status" example:"ok"`
+}
+
 // Handler orchestrates the transcription pipeline for HTTP requests.
 type Handler struct {
 	transcriber transcription.Transcriber
@@ -138,6 +143,18 @@ func (h *Handler) ListTranscriptions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, records)
+}
+
+// Health godoc
+//
+//	@Summary		Service health
+//	@Description	Returns 200 when the HTTP service is running.
+//	@Tags			health
+//	@Produce		json
+//	@Success		200	{object}	HealthResponse
+//	@Router			/health [get]
+func (h *Handler) Health(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, HealthResponse{Status: "ok"})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

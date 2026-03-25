@@ -83,6 +83,7 @@ func main() {
 	h := handler.NewHandler(transcriber, analyzer, repo, cfg.Server.MaxUploadBytes)
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", h.Health)
 	mux.HandleFunc("POST /transcribe", h.Transcribe)
 	mux.HandleFunc("GET /transcriptions", h.ListTranscriptions)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)

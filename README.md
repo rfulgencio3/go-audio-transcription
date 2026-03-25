@@ -36,6 +36,7 @@ POST /transcribe  (multipart: field "audio")
 
 | Method | Path             | Description                          |
 |--------|------------------|--------------------------------------|
+| GET    | /health          | Service healthcheck                  |
 | POST   | /transcribe      | Upload audio → transcript + analysis |
 | GET    | /transcriptions  | List paginated transcriptions        |
 | GET    | /swagger/*       | Swagger UI                           |

@@ -46,6 +46,12 @@ definitions:
         example: audio field is required
         type: string
     type: object
+  handler.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
 host: example.com
 info:
   contact: {}
@@ -54,6 +60,19 @@ info:
   title: Audio Transcription API
   version: "1.0"
 paths:
+  /health:
+    get:
+      description: Returns 200 when the HTTP service is running.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Service health
+      tags:
+      - health
   /transcribe:
     post:
       consumes:

@@ -233,3 +233,25 @@ func TestHandler_ListTranscriptions(t *testing.T) {
 		})
 	}
 }
+
+func TestHandler_Health(t *testing.T) {
+	t.Parallel()
+
+	h := handler.NewHandler(&mockTranscriber{}, &mockAnalyzer{}, &mockRepository{}, 25*1024*1024)
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rr := httptest.NewRecorder()
+
+	h.Health(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decoding response body: %v", err)
+	}
+	if got := body["status"]; got != "ok" {
+		t.Fatalf("status body = %v, want ok", got)
+	}
+}
