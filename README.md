@@ -56,6 +56,7 @@ Configure these variables in the Railway service settings:
 |----------------------|------------------------------------|----------------------|
 | `ADDR`               | HTTP listen address                | `:$PORT` or `:8080`  |
 | `PORT`               | Platform-provided port fallback    | optional             |
+| `PUBLIC_BASE_URL`    | Public app URL for Swagger         | optional             |
 | `MAX_UPLOAD_BYTES`   | Max audio file size in bytes       | `26214400` (25MB)    |
 | `GEMINI_API_KEY`     | Google Gemini API key              | optional at startup, required for `/transcribe` |
 | `GEMINI_MODEL`       | Gemini model name                  | `gemini-1.5-flash`   |
@@ -63,6 +64,7 @@ Configure these variables in the Railway service settings:
 | `RAVENDB_DATABASE`   | RavenDB database name              | `AudioTranscriptions` |
 
 If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable` until Gemini is configured.
+If you want Swagger to point to the Railway domain instead of `localhost`, set `PUBLIC_BASE_URL`, for example `https://go-audio-transcription.up.railway.app`.
 
 ### Run
 

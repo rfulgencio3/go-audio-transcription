@@ -46,7 +46,7 @@ definitions:
         example: audio field is required
         type: string
     type: object
-host: localhost:8080
+host: example.com
 info:
   contact: {}
   description: 'POC: receives audio, transcribes and analyzes with Google Gemini,

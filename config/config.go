@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -24,6 +25,7 @@ type Config struct {
 	Server  ServerConfig
 	Gemini  GeminiConfig
 	RavenDB RavenDBConfig
+	Public  PublicConfig
 }
 
 // ServerConfig holds HTTP server settings.
@@ -32,6 +34,13 @@ type ServerConfig struct {
 	ReadTimeout    time.Duration
 	WriteTimeout   time.Duration
 	MaxUploadBytes int64
+}
+
+// PublicConfig holds externally visible app URLs.
+type PublicConfig struct {
+	BaseURL string
+	Host    string
+	Scheme  string
 }
 
 // GeminiConfig holds Google Gemini API credentials.
@@ -76,6 +85,7 @@ func LoadFromEnv() (Config, error) {
 			URLs:         ravenURLs,
 			DatabaseName: getEnvOrDefault("RAVENDB_DATABASE", defaultRavenDBName),
 		},
+		Public: getPublicConfig(),
 	}, nil
 }
 
@@ -102,4 +112,22 @@ func parseInt64Env(key string, defaultVal int64) (int64, error) {
 		return defaultVal, nil
 	}
 	return strconv.ParseInt(v, 10, 64)
+}
+
+func getPublicConfig() PublicConfig {
+	baseURL := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))
+	if baseURL == "" {
+		return PublicConfig{}
+	}
+
+	u, err := url.Parse(baseURL)
+	if err != nil || u.Host == "" {
+		return PublicConfig{BaseURL: baseURL}
+	}
+
+	return PublicConfig{
+		BaseURL: strings.TrimRight(baseURL, "/"),
+		Host:    u.Host,
+		Scheme:  u.Scheme,
+	}
 }

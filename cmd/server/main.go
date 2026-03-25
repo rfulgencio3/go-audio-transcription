@@ -3,7 +3,7 @@
 //	@title			Audio Transcription API
 //	@version		1.0
 //	@description	POC: receives audio, transcribes and analyzes with Google Gemini, persists in RavenDB.
-//	@host			localhost:8080
+//	@host			example.com
 //	@BasePath		/
 //	@accept			multipart/form-data
 //	@produce		application/json
@@ -22,7 +22,7 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/rfulgencio3/go-audio-transcription/config"
-	_ "github.com/rfulgencio3/go-audio-transcription/docs"
+	"github.com/rfulgencio3/go-audio-transcription/docs"
 	"github.com/rfulgencio3/go-audio-transcription/internal/ai"
 	"github.com/rfulgencio3/go-audio-transcription/internal/handler"
 	"github.com/rfulgencio3/go-audio-transcription/internal/storage"
@@ -34,6 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("config error: %v", err)
 	}
+	configureSwagger(cfg)
 
 	// --- Build dependencies ---
 
@@ -96,7 +97,11 @@ func main() {
 	// --- Start server in background goroutine with bounded lifecycle ---
 	go func() {
 		log.Printf("server listening on %s", cfg.Server.Addr)
-		log.Printf("swagger UI: http://localhost%s/swagger/index.html", cfg.Server.Addr)
+		if cfg.Public.BaseURL != "" {
+			log.Printf("swagger UI: %s/swagger/index.html", cfg.Public.BaseURL)
+		} else {
+			log.Printf("swagger UI: http://localhost%s/swagger/index.html", cfg.Server.Addr)
+		}
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("server error: %v", err)
 		}
@@ -115,4 +120,19 @@ func main() {
 		log.Fatalf("graceful shutdown failed: %v", err)
 	}
 	log.Println("server stopped")
+}
+
+func configureSwagger(cfg config.Config) {
+	docs.SwaggerInfo.BasePath = "/"
+
+	if cfg.Public.Host != "" {
+		docs.SwaggerInfo.Host = cfg.Public.Host
+		if cfg.Public.Scheme != "" {
+			docs.SwaggerInfo.Schemes = []string{cfg.Public.Scheme}
+		}
+		return
+	}
+
+	docs.SwaggerInfo.Host = "localhost" + cfg.Server.Addr
+	docs.SwaggerInfo.Schemes = []string{"http"}
 }
