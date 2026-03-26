@@ -1,66 +1,73 @@
 # go-audio-transcription
 
-A Go POC for end-to-end audio transcription with document persistence.
+A Go service that receives audio files, captures the full spoken transcript with Gemini, and stores the result in MongoDB.
 
 ## Overview
 
-This project validates a complete audio transcription pipeline:
+This project implements a simple audio transcription pipeline:
 
-**Receive audio -> Transcribe full content with Gemini -> Persist**
+**Receive audio -> Transcribe full content with Gemini -> Optionally enrich -> Persist**
 
 ## Stack
 
 | Layer        | Technology                                   |
 |--------------|----------------------------------------------|
-| HTTP Server  | Go standard `net/http`                       |
-| Transcription| Google Gemini API                            |
-| Database     | MongoDB                                      |
-| API Docs     | Swagger via `swaggo/swag`                    |
-| Config       | Minimal environment variables                |
+| HTTP Server   | Go standard `net/http`                      |
+| Transcription | Google Gemini API                           |
+| Persistence   | MongoDB                                     |
+| API Docs      | Swagger via `swaggo/swag`                   |
+| Config        | Minimal environment variables               |
 
 ## Architecture
 
-Audio transcription records are naturally document-shaped: a single record aggregates filename, the complete transcript, and optional enrichments with no relational joins. MongoDB stores the document exactly as the domain represents it, without schema migrations.
+Each transcription is stored as a single MongoDB document with:
+
+- file metadata
+- full transcript text
+- optional language and duration metadata
+- optional summary, key points, and sentiment
+- creation timestamp
 
 ```text
 POST /transcribe  (multipart: field "audio")
   |- Validate file size and content-type
   |- Transcribe audio -> full text (Gemini)
-  |- Optionally enrich transcript  (Gemini)
-  |- Persist document          (MongoDB)
+  |- Optionally enrich transcript (Gemini)
+  |- Persist document             (MongoDB)
   `- Return JSON 201
 ```
 
+If transcript enrichment fails, the service still saves the full transcript.
+
 ## Endpoints
 
-| Method | Path             | Description                           |
-|--------|------------------|---------------------------------------|
-| GET    | /health          | Service healthcheck                   |
-| POST   | /transcribe      | Upload audio -> full transcript        |
-| GET    | /transcriptions  | List paginated transcriptions         |
-| GET    | /swagger/*       | Swagger UI                            |
+| Method | Path             | Description                          |
+|--------|------------------|--------------------------------------|
+| GET    | /health          | Service healthcheck                  |
+| POST   | /transcribe      | Upload audio and persist transcript  |
+| GET    | /transcriptions  | List paginated transcriptions        |
+| GET    | /swagger/*       | Swagger UI                           |
 
 ## Getting Started
 
 ### Prerequisites
 
 - Go 1.21+
-- MongoDB instance (local or cloud - [Railway](https://railway.app) recommended)
+- MongoDB instance
 - Google Gemini API key
 
 ### Configuration
 
-Configure only the essential variables in the Railway service settings:
+Only two application variables are required:
 
-| Variable             | Description                        | Default                 |
-|----------------------|------------------------------------|-------------------------|
-| `PORT`               | Platform-provided port fallback    | optional                |
-| `GEMINI_API_KEY`     | Google Gemini API key              | optional at startup, required for `/transcribe` |
-| `MONGODB_URI`        | MongoDB connection URI             | required                |
+| Variable         | Description                          |
+|------------------|--------------------------------------|
+| `GEMINI_API_KEY` | Google Gemini API key                |
+| `MONGODB_URI`    | MongoDB connection URI               |
 
 `MONGO_URL` is also accepted as a fallback for `MONGODB_URI` when you want to reference the Mongo service variable directly.
 
-If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable` until Gemini is configured.
+If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable`.
 
 All other runtime settings use internal defaults:
 
@@ -71,28 +78,39 @@ All other runtime settings use internal defaults:
 - MongoDB collection: `transcriptions`
 - Swagger public domain: inferred from Railway `RAILWAY_PUBLIC_DOMAIN` when available
 
+### Railway Example
+
+For the `go-audio-transcription` service, a typical Railway setup is:
+
+```env
+GEMINI_API_KEY=...
+MONGODB_URI=${{Mongo.MONGO_URL}}/?authSource=admin
+```
+
 ### Run
 
 ```bash
-# Install swag CLI (first time only)
-go install github.com/swaggo/swag/cmd/swag@latest
-
-# Generate Swagger docs
-swag init -g cmd/server/main.go --output docs
-
-# Run the server
-go run ./cmd/server/
+export GEMINI_API_KEY="your-gemini-key"
+export MONGODB_URI="mongodb://localhost:27017"
+go run ./cmd/server
 ```
 
 ### API Docs
 
 Open [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html) in your browser.
 
-### Transcribe an audio file
+### Test the API
 
 ```bash
+# Healthcheck
+curl http://localhost:8080/health
+
+# Upload an audio file
 curl -X POST http://localhost:8080/transcribe \
   -F "audio=@path/to/your/audio.mp3"
+
+# List stored transcriptions
+curl http://localhost:8080/transcriptions
 ```
 
 ### Example response
@@ -105,18 +123,20 @@ curl -X POST http://localhost:8080/transcribe \
   "transcript": "Hello, this is a test recording...",
   "language": "en",
   "audioDuration": 47.3,
+  "summary": "A short summary of the recording.",
+  "keyPoints": ["Greeting", "Short test recording"],
+  "sentiment": "positive",
   "createdAt": "2026-03-25T14:30:00Z"
 }
 ```
 
+`summary`, `keyPoints`, and `sentiment` are optional. The full transcript is the primary persisted output.
+
 ## Development
 
 ```bash
-# Run tests with race detector
-go test -race ./...
-
-# Lint
-golangci-lint run ./...
+go test ./...
+go vet ./...
 ```
 
 ## Supported Audio Formats
