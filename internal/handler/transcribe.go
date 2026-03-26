@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -66,22 +67,27 @@ func NewHandler(
 //	@Router			/transcribe [post]
 func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	log.Printf("handler.Transcribe: start")
 
 	r.Body = http.MaxBytesReader(w, r.Body, h.maxBytes)
 	if err := r.ParseMultipartForm(h.maxBytes); err != nil {
+		log.Printf("handler.Transcribe: multipart parse failed: %v", err)
 		writeJSON(w, http.StatusRequestEntityTooLarge, ErrorResponse{Error: "file exceeds maximum allowed size"})
 		return
 	}
 
 	file, header, err := r.FormFile("audio")
 	if err != nil {
+		log.Printf("handler.Transcribe: missing audio field: %v", err)
 		writeJSON(w, http.StatusBadRequest, ErrorResponse{Error: "audio field is required"})
 		return
 	}
 	defer file.Close()
+	log.Printf("handler.Transcribe: received file=%s size=%d", header.Filename, header.Size)
 
 	result, err := h.transcriber.Transcribe(ctx, header.Filename, file)
 	if err != nil {
+		log.Printf("handler.Transcribe: transcription failed: %v", err)
 		if errors.Is(err, transcription.ErrProviderDisabled) {
 			writeJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: err.Error()})
 			return
@@ -92,6 +98,7 @@ func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 
 	analysis, err := h.analyzer.Analyze(ctx, result.Text)
 	if err != nil {
+		log.Printf("handler.Transcribe: analysis failed: %v", err)
 		if errors.Is(err, ai.ErrProviderDisabled) {
 			writeJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: err.Error()})
 			return
@@ -112,10 +119,12 @@ func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Save(ctx, record); err != nil {
+		log.Printf("handler.Transcribe: persist failed: %v", err)
 		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "failed to persist transcription"})
 		return
 	}
 
+	log.Printf("handler.Transcribe: success")
 	writeJSON(w, http.StatusCreated, record)
 }
 
@@ -132,16 +141,19 @@ func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 //	@Router			/transcriptions [get]
 func (h *Handler) ListTranscriptions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	log.Printf("handler.ListTranscriptions: start")
 
 	limit := parseQueryInt(r, "limit", 20)
 	offset := parseQueryInt(r, "offset", 0)
 
 	records, err := h.repo.List(ctx, limit, offset)
 	if err != nil {
+		log.Printf("handler.ListTranscriptions: repo list failed: %v", err)
 		writeJSON(w, http.StatusInternalServerError, ErrorResponse{Error: "failed to list transcriptions"})
 		return
 	}
 
+	log.Printf("handler.ListTranscriptions: success records=%d", len(records))
 	writeJSON(w, http.StatusOK, records)
 }
 

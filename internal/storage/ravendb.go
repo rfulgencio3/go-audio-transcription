@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	ravendb "github.com/ravendb/ravendb-go-client"
@@ -21,10 +22,12 @@ type RavenDBRepository struct {
 // NewRavenDBRepository initialises and validates the DocumentStore connection.
 // Returns an error if the RavenDB server is unreachable or the store fails to initialise.
 func NewRavenDBRepository(urls []string, databaseName string) (*RavenDBRepository, error) {
+	log.Printf("storage: initializing RavenDB store urls=%v database=%s", urls, databaseName)
 	store := ravendb.NewDocumentStore(urls, databaseName)
 	if err := store.Initialize(); err != nil {
 		return nil, fmt.Errorf("storage.NewRavenDBRepository: initializing document store: %w", err)
 	}
+	log.Printf("storage: RavenDB store initialized")
 	return &RavenDBRepository{
 		store:        store,
 		databaseName: databaseName,
@@ -34,6 +37,7 @@ func NewRavenDBRepository(urls []string, databaseName string) (*RavenDBRepositor
 // Save stores a new TranscriptionRecord and populates its RavenDB-assigned ID.
 // Context cancellation is checked before opening the session and after SaveChanges.
 func (r *RavenDBRepository) Save(ctx context.Context, record *domain.TranscriptionRecord) error {
+	log.Printf("storage.Save: start filename=%s size=%d", record.AudioFilename, record.FileSizeBytes)
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("storage.Save: context cancelled before session: %w", err)
 	}
@@ -43,6 +47,7 @@ func (r *RavenDBRepository) Save(ctx context.Context, record *domain.Transcripti
 		return fmt.Errorf("storage.Save: opening RavenDB session: %w", err)
 	}
 	defer session.Close()
+	log.Printf("storage.Save: session opened")
 
 	record.CreatedAt = time.Now().UTC()
 
@@ -53,11 +58,13 @@ func (r *RavenDBRepository) Save(ctx context.Context, record *domain.Transcripti
 	if err := session.SaveChanges(); err != nil {
 		return fmt.Errorf("storage.Save: saving changes: %w", err)
 	}
+	log.Printf("storage.Save: save changes completed")
 
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("storage.Save: context cancelled after save: %w", err)
 	}
 
+	log.Printf("storage.Save: success")
 	return nil
 }
 
@@ -84,6 +91,7 @@ func (r *RavenDBRepository) FindByID(ctx context.Context, id string) (*domain.Tr
 // List returns up to limit TranscriptionRecords ordered by CreatedAt descending,
 // skipping the first offset records.
 func (r *RavenDBRepository) List(ctx context.Context, limit, offset int) ([]*domain.TranscriptionRecord, error) {
+	log.Printf("storage.List: start limit=%d offset=%d", limit, offset)
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("storage.List: context cancelled: %w", err)
 	}
@@ -93,6 +101,7 @@ func (r *RavenDBRepository) List(ctx context.Context, limit, offset int) ([]*dom
 		return nil, fmt.Errorf("storage.List: opening RavenDB session: %w", err)
 	}
 	defer session.Close()
+	log.Printf("storage.List: session opened")
 
 	var records []*domain.TranscriptionRecord
 	q := session.QueryCollection("TranscriptionRecords")
@@ -103,6 +112,7 @@ func (r *RavenDBRepository) List(ctx context.Context, limit, offset int) ([]*dom
 	if err := q.GetResults(&records); err != nil {
 		return nil, fmt.Errorf("storage.List: querying documents: %w", err)
 	}
+	log.Printf("storage.List: query completed records=%d", len(records))
 
 	return records, nil
 }
