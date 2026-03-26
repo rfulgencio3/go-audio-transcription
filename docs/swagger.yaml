@@ -35,7 +35,8 @@ definitions:
         description: AI analysis from Google Gemini - stored as nested document, schema-free.
         type: string
       transcript:
-        description: Transcription result from Gemini audio understanding.
+        description: Transcription result from Gemini audio understanding, stored
+          as the full spoken text.
         example: Hello, this is a test recording...
         type: string
     type: object
@@ -55,8 +56,8 @@ definitions:
 host: example.com
 info:
   contact: {}
-  description: 'POC: receives audio, transcribes and analyzes with Google Gemini,
-    persists in MongoDB.'
+  description: 'POC: receives audio, captures the complete transcript with Google
+    Gemini, optionally enriches it, and persists in MongoDB.'
   title: Audio Transcription API
   version: "1.0"
 paths:
@@ -78,8 +79,8 @@ paths:
       consumes:
       - multipart/form-data
       description: |-
-        Receives an audio file upload, transcribes and analyzes it with Google Gemini,
-        and persists the result in MongoDB.
+        Receives an audio file upload, transcribes the complete spoken content with Google Gemini,
+        and persists the full transcript in MongoDB. Transcript analysis is best-effort.
       parameters:
       - description: Audio file (mp3, mp4, wav, m4a, ogg, webm, flac — max 25MB)
         in: formData
@@ -98,7 +99,7 @@ paths:
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "413":
-          description: File exceeds MAX_UPLOAD_BYTES
+          description: File exceeds size limit
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "500":
@@ -106,11 +107,11 @@ paths:
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "502":
-          description: Upstream API failure from Gemini
+          description: Upstream transcription failure from Gemini
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "503":
-          description: Required AI provider is not configured
+          description: Transcription provider is not configured
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
       summary: Transcribe an audio file

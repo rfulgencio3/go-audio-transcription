@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -58,13 +57,8 @@ type MongoConfig struct {
 
 // LoadFromEnv reads all configuration from environment variables.
 func LoadFromEnv() (Config, error) {
-	geminiKey := os.Getenv("GEMINI_API_KEY")
+	geminiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	mongoURI := strings.TrimSpace(getEnvOrDefault("MONGODB_URI", os.Getenv("MONGO_URL")))
-
-	maxUploadBytes, err := parseInt64Env("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
-	if err != nil {
-		return Config{}, fmt.Errorf("config: invalid MAX_UPLOAD_BYTES: %w", err)
-	}
 	if mongoURI == "" {
 		return Config{}, fmt.Errorf("config: missing required environment variable: MONGODB_URI")
 	}
@@ -74,25 +68,22 @@ func LoadFromEnv() (Config, error) {
 			Addr:           getServerAddr(),
 			ReadTimeout:    defaultReadTimeout,
 			WriteTimeout:   defaultWriteTimeout,
-			MaxUploadBytes: maxUploadBytes,
+			MaxUploadBytes: defaultMaxUploadBytes,
 		},
 		Gemini: GeminiConfig{
 			APIKey:    geminiKey,
-			ModelName: getEnvOrDefault("GEMINI_MODEL", defaultGeminiModel),
+			ModelName: defaultGeminiModel,
 		},
 		Mongo: MongoConfig{
 			URI:            mongoURI,
-			DatabaseName:   getEnvOrDefault("MONGODB_DATABASE", defaultMongoDatabase),
-			CollectionName: getEnvOrDefault("MONGODB_COLLECTION", defaultMongoCollection),
+			DatabaseName:   defaultMongoDatabase,
+			CollectionName: defaultMongoCollection,
 		},
 		Public: getPublicConfig(),
 	}, nil
 }
 
 func getServerAddr() string {
-	if addr := os.Getenv("ADDR"); addr != "" {
-		return addr
-	}
 	if port := os.Getenv("PORT"); port != "" {
 		return ":" + port
 	}
@@ -106,19 +97,13 @@ func getEnvOrDefault(key, defaultVal string) string {
 	return defaultVal
 }
 
-func parseInt64Env(key string, defaultVal int64) (int64, error) {
-	v := os.Getenv(key)
-	if v == "" {
-		return defaultVal, nil
-	}
-	return strconv.ParseInt(v, 10, 64)
-}
-
 func getPublicConfig() PublicConfig {
-	baseURL := strings.TrimSpace(os.Getenv("PUBLIC_BASE_URL"))
-	if baseURL == "" {
+	publicDomain := strings.TrimSpace(os.Getenv("RAILWAY_PUBLIC_DOMAIN"))
+	if publicDomain == "" {
 		return PublicConfig{}
 	}
+
+	baseURL := "https://" + publicDomain
 
 	u, err := url.Parse(baseURL)
 	if err != nil || u.Host == "" {

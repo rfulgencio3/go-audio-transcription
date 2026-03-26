@@ -13,7 +13,7 @@ type TranscriptionRecord struct {
 	AudioFilename string `json:"audioFilename" bson:"audioFilename" example:"meeting.mp3"`
 	FileSizeBytes int64  `json:"fileSizeBytes" bson:"fileSizeBytes" example:"2097152"`
 
-	// Transcription result from Gemini audio understanding.
+	// Transcription result from Gemini audio understanding, stored as the full spoken text.
 	Transcript    string  `json:"transcript" bson:"transcript" example:"Hello, this is a test recording..."`
 	Language      string  `json:"language,omitempty" bson:"language,omitempty" example:"en"`
 	AudioDuration float64 `json:"audioDuration,omitempty" bson:"audioDuration,omitempty" example:"47.3"`

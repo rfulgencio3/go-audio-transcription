@@ -52,18 +52,18 @@ func NewHandler(
 // Transcribe godoc
 //
 //	@Summary		Transcribe an audio file
-//	@Description	Receives an audio file upload, transcribes and analyzes it with Google Gemini,
-//	@Description	and persists the result in MongoDB.
+//	@Description	Receives an audio file upload, transcribes the complete spoken content with Google Gemini,
+//	@Description	and persists the full transcript in MongoDB. Transcript analysis is best-effort.
 //	@Tags			transcription
 //	@Accept			multipart/form-data
 //	@Produce		json
 //	@Param			audio	formData	file	true	"Audio file (mp3, mp4, wav, m4a, ogg, webm, flac — max 25MB)"
 //	@Success		201		{object}	domain.TranscriptionRecord
 //	@Failure		400		{object}	ErrorResponse	"Missing 'audio' field"
-//	@Failure		413		{object}	ErrorResponse	"File exceeds MAX_UPLOAD_BYTES"
-//	@Failure		503		{object}	ErrorResponse	"Required AI provider is not configured"
+//	@Failure		413		{object}	ErrorResponse	"File exceeds size limit"
+//	@Failure		503		{object}	ErrorResponse	"Transcription provider is not configured"
 //	@Failure		500		{object}	ErrorResponse	"Internal server error or MongoDB failure"
-//	@Failure		502		{object}	ErrorResponse	"Upstream API failure from Gemini"
+//	@Failure		502		{object}	ErrorResponse	"Upstream transcription failure from Gemini"
 //	@Router			/transcribe [post]
 func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -96,26 +96,23 @@ func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	analysis, err := h.analyzer.Analyze(ctx, result.Text)
-	if err != nil {
-		log.Printf("handler.Transcribe: analysis failed: %v", err)
-		if errors.Is(err, ai.ErrProviderDisabled) {
-			writeJSON(w, http.StatusServiceUnavailable, ErrorResponse{Error: err.Error()})
-			return
-		}
-		writeJSON(w, http.StatusBadGateway, ErrorResponse{Error: fmt.Sprintf("AI analysis failed: %v", err)})
-		return
-	}
-
 	record := &domain.TranscriptionRecord{
 		AudioFilename: header.Filename,
 		FileSizeBytes: header.Size,
 		Transcript:    result.Text,
 		Language:      result.Language,
 		AudioDuration: result.Duration,
-		Summary:       analysis.Summary,
-		KeyPoints:     analysis.KeyPoints,
-		Sentiment:     analysis.Sentiment,
+	}
+
+	if h.analyzer != nil {
+		analysis, err := h.analyzer.Analyze(ctx, result.Text)
+		if err != nil {
+			log.Printf("handler.Transcribe: analysis skipped after transcript capture: %v", err)
+		} else {
+			record.Summary = analysis.Summary
+			record.KeyPoints = analysis.KeyPoints
+			record.Sentiment = analysis.Sentiment
+		}
 	}
 
 	if err := h.repo.Save(ctx, record); err != nil {

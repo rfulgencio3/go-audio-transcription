@@ -2,7 +2,7 @@
 //
 //	@title			Audio Transcription API
 //	@version		1.0
-//	@description	POC: receives audio, transcribes and analyzes with Google Gemini, persists in MongoDB.
+//	@description	POC: receives audio, captures the complete transcript with Google Gemini, optionally enriches it, and persists in MongoDB.
 //	@host			example.com
 //	@BasePath		/
 //	@accept			multipart/form-data

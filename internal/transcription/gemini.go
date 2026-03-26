@@ -15,11 +15,13 @@ import (
 	"google.golang.org/api/option"
 )
 
-const transcribePrompt = `Transcribe the spoken audio and return only valid JSON.
+const transcribePrompt = `Transcribe all spoken content from the audio and return only valid JSON.
+Do not summarize, omit, or rewrite. Preserve the original order of speech.
+Include all words that are intelligible, including repetitions, hesitations, numbers, names, and short filler words when they are audible.
 
 Required JSON format:
 {
-  "transcript": "full verbatim transcript",
+  "transcript": "full verbatim transcript with all spoken details",
   "language": "ISO 639-1 language code when confidently known, otherwise empty string"
 }`
 

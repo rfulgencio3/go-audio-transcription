@@ -43,7 +43,7 @@ const docTemplate = `{
         },
         "/transcribe": {
             "post": {
-                "description": "Receives an audio file upload, transcribes and analyzes it with Google Gemini,\nand persists the result in MongoDB.",
+                "description": "Receives an audio file upload, transcribes the complete spoken content with Google Gemini,\nand persists the full transcript in MongoDB. Transcript analysis is best-effort.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -77,7 +77,7 @@ const docTemplate = `{
                         }
                     },
                     "413": {
-                        "description": "File exceeds MAX_UPLOAD_BYTES",
+                        "description": "File exceeds size limit",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -89,13 +89,13 @@ const docTemplate = `{
                         }
                     },
                     "502": {
-                        "description": "Upstream API failure from Gemini",
+                        "description": "Upstream transcription failure from Gemini",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
                     "503": {
-                        "description": "Required AI provider is not configured",
+                        "description": "Transcription provider is not configured",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -192,7 +192,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "transcript": {
-                    "description": "Transcription result from Gemini audio understanding.",
+                    "description": "Transcription result from Gemini audio understanding, stored as the full spoken text.",
                     "type": "string",
                     "example": "Hello, this is a test recording..."
                 }
@@ -227,7 +227,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Audio Transcription API",
-	Description:      "POC: receives audio, transcribes and analyzes with Google Gemini, persists in MongoDB.",
+	Description:      "POC: receives audio, captures the complete transcript with Google Gemini, optionally enriches it, and persists in MongoDB.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

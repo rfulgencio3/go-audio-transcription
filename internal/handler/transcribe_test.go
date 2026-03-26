@@ -100,6 +100,7 @@ func TestHandler_Transcribe(t *testing.T) {
 		buildReq       func(t *testing.T) *http.Request
 		wantStatusCode int
 		wantField      string // JSON field expected in response body
+		wantSaved      bool
 	}{
 		{
 			name:           "happy path returns 201 with transcript",
@@ -109,6 +110,7 @@ func TestHandler_Transcribe(t *testing.T) {
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
 			wantStatusCode: http.StatusCreated,
 			wantField:      "transcript",
+			wantSaved:      true,
 		},
 		{
 			name:           "missing audio field returns 400",
@@ -118,6 +120,7 @@ func TestHandler_Transcribe(t *testing.T) {
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "", "", nil) },
 			wantStatusCode: http.StatusBadRequest,
 			wantField:      "error",
+			wantSaved:      false,
 		},
 		{
 			name:           "transcription failure returns 502",
@@ -127,15 +130,17 @@ func TestHandler_Transcribe(t *testing.T) {
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
 			wantStatusCode: http.StatusBadGateway,
 			wantField:      "error",
+			wantSaved:      false,
 		},
 		{
-			name:           "AI analysis failure returns 502",
+			name:           "AI analysis failure still returns 201 with transcript",
 			transcriber:    happyTranscriber,
 			analyzer:       &mockAnalyzer{err: errors.New("quota exceeded")},
 			repo:           &mockRepository{},
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
-			wantStatusCode: http.StatusBadGateway,
-			wantField:      "error",
+			wantStatusCode: http.StatusCreated,
+			wantField:      "transcript",
+			wantSaved:      true,
 		},
 		{
 			name:           "disabled transcriber returns 503",
@@ -145,15 +150,17 @@ func TestHandler_Transcribe(t *testing.T) {
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
 			wantStatusCode: http.StatusServiceUnavailable,
 			wantField:      "error",
+			wantSaved:      false,
 		},
 		{
-			name:           "disabled analyzer returns 503",
+			name:           "disabled analyzer still returns 201 with transcript",
 			transcriber:    happyTranscriber,
 			analyzer:       ai.NewDisabledAnalyzer("GEMINI_API_KEY is not set"),
 			repo:           &mockRepository{},
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
-			wantStatusCode: http.StatusServiceUnavailable,
-			wantField:      "error",
+			wantStatusCode: http.StatusCreated,
+			wantField:      "transcript",
+			wantSaved:      true,
 		},
 		{
 			name:           "storage failure returns 500",
@@ -163,6 +170,7 @@ func TestHandler_Transcribe(t *testing.T) {
 			buildReq:       func(t *testing.T) *http.Request { return newMultipartRequest(t, "audio", "test.mp3", []byte("data")) },
 			wantStatusCode: http.StatusInternalServerError,
 			wantField:      "error",
+			wantSaved:      false,
 		},
 	}
 
@@ -184,6 +192,14 @@ func TestHandler_Transcribe(t *testing.T) {
 			}
 			if _, ok := body[tc.wantField]; !ok {
 				t.Errorf("response body missing field %q: %v", tc.wantField, body)
+			}
+			if tc.wantSaved {
+				if tc.repo.saved == nil {
+					t.Fatalf("expected record to be saved")
+				}
+				if tc.repo.saved.Transcript != happyTranscriber.result.Text {
+					t.Fatalf("saved transcript = %q, want %q", tc.repo.saved.Transcript, happyTranscriber.result.Text)
+				}
 			}
 		})
 	}

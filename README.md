@@ -1,12 +1,12 @@
 # go-audio-transcription
 
-A Go POC for end-to-end audio transcription with AI analysis and document persistence.
+A Go POC for end-to-end audio transcription with document persistence.
 
 ## Overview
 
 This project validates a complete audio transcription pipeline:
 
-**Receive audio -> Transcribe with Gemini -> Analyze with Gemini -> Persist**
+**Receive audio -> Transcribe full content with Gemini -> Persist**
 
 ## Stack
 
@@ -14,20 +14,19 @@ This project validates a complete audio transcription pipeline:
 |--------------|----------------------------------------------|
 | HTTP Server  | Go standard `net/http`                       |
 | Transcription| Google Gemini API                            |
-| AI Analysis  | Google Gemini API                            |
 | Database     | MongoDB                                      |
 | API Docs     | Swagger via `swaggo/swag`                    |
-| Config       | Environment variables                        |
+| Config       | Minimal environment variables                |
 
 ## Architecture
 
-Audio transcription records are naturally document-shaped: a single record aggregates filename, transcript, key points, summary, and sentiment with no relational joins. MongoDB stores the document exactly as the domain represents it, without schema migrations.
+Audio transcription records are naturally document-shaped: a single record aggregates filename, the complete transcript, and optional enrichments with no relational joins. MongoDB stores the document exactly as the domain represents it, without schema migrations.
 
 ```text
 POST /transcribe  (multipart: field "audio")
   |- Validate file size and content-type
-  |- Transcribe audio -> text  (Gemini)
-  |- Analyze transcript        (Gemini)
+  |- Transcribe audio -> full text (Gemini)
+  |- Optionally enrich transcript  (Gemini)
   |- Persist document          (MongoDB)
   `- Return JSON 201
 ```
@@ -37,7 +36,7 @@ POST /transcribe  (multipart: field "audio")
 | Method | Path             | Description                           |
 |--------|------------------|---------------------------------------|
 | GET    | /health          | Service healthcheck                   |
-| POST   | /transcribe      | Upload audio -> transcript + analysis |
+| POST   | /transcribe      | Upload audio -> full transcript        |
 | GET    | /transcriptions  | List paginated transcriptions         |
 | GET    | /swagger/*       | Swagger UI                            |
 
@@ -51,25 +50,26 @@ POST /transcribe  (multipart: field "audio")
 
 ### Configuration
 
-Configure these variables in the Railway service settings:
+Configure only the essential variables in the Railway service settings:
 
 | Variable             | Description                        | Default                 |
 |----------------------|------------------------------------|-------------------------|
-| `ADDR`               | HTTP listen address                | `:$PORT` or `:8080`     |
 | `PORT`               | Platform-provided port fallback    | optional                |
-| `PUBLIC_BASE_URL`    | Public app URL for Swagger         | optional                |
-| `MAX_UPLOAD_BYTES`   | Max audio file size in bytes       | `26214400` (25MB)       |
 | `GEMINI_API_KEY`     | Google Gemini API key              | optional at startup, required for `/transcribe` |
-| `GEMINI_MODEL`       | Gemini model name                  | `gemini-1.5-flash`      |
 | `MONGODB_URI`        | MongoDB connection URI             | required                |
-| `MONGODB_DATABASE`   | MongoDB database name              | `AudioTranscriptions`   |
-| `MONGODB_COLLECTION` | MongoDB collection name            | `transcriptions`        |
 
 `MONGO_URL` is also accepted as a fallback for `MONGODB_URI` when you want to reference the Mongo service variable directly.
 
 If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable` until Gemini is configured.
 
-If you want Swagger to point to the Railway domain instead of `localhost`, set `PUBLIC_BASE_URL`, for example `https://go-audio-transcription.up.railway.app`.
+All other runtime settings use internal defaults:
+
+- listen address: `:$PORT` or `:8080`
+- upload limit: `25MB`
+- Gemini model: `gemini-1.5-flash`
+- MongoDB database: `AudioTranscriptions`
+- MongoDB collection: `transcriptions`
+- Swagger public domain: inferred from Railway `RAILWAY_PUBLIC_DOMAIN` when available
 
 ### Run
 
@@ -105,9 +105,6 @@ curl -X POST http://localhost:8080/transcribe \
   "transcript": "Hello, this is a test recording...",
   "language": "en",
   "audioDuration": 47.3,
-  "summary": "A brief test recording introducing the team.",
-  "keyPoints": ["Introduction", "Team structure overview"],
-  "sentiment": "positive",
   "createdAt": "2026-03-25T14:30:00Z"
 }
 ```
