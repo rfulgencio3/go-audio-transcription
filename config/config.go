@@ -11,21 +11,21 @@ import (
 )
 
 const (
-	defaultAddr           = ":8080"
-	defaultMaxUploadBytes = 25 * 1024 * 1024 // 25 MB
-	defaultGeminiModel    = "gemini-1.5-flash"
-	defaultRavenDBURLs    = "http://localhost:8080"
-	defaultRavenDBName    = "AudioTranscriptions"
-	defaultReadTimeout    = 30 * time.Second
-	defaultWriteTimeout   = 120 * time.Second
+	defaultAddr            = ":8080"
+	defaultMaxUploadBytes  = 25 * 1024 * 1024 // 25 MB
+	defaultGeminiModel     = "gemini-1.5-flash"
+	defaultMongoDatabase   = "AudioTranscriptions"
+	defaultMongoCollection = "transcriptions"
+	defaultReadTimeout     = 30 * time.Second
+	defaultWriteTimeout    = 120 * time.Second
 )
 
 // Config holds all runtime configuration for the application.
 type Config struct {
-	Server  ServerConfig
-	Gemini  GeminiConfig
-	RavenDB RavenDBConfig
-	Public  PublicConfig
+	Server ServerConfig
+	Gemini GeminiConfig
+	Mongo  MongoConfig
+	Public PublicConfig
 }
 
 // ServerConfig holds HTTP server settings.
@@ -49,25 +49,24 @@ type GeminiConfig struct {
 	ModelName string
 }
 
-// RavenDBConfig holds connection settings for RavenDB.
-type RavenDBConfig struct {
-	URLs         []string
-	DatabaseName string
+// MongoConfig holds connection settings for MongoDB.
+type MongoConfig struct {
+	URI            string
+	DatabaseName   string
+	CollectionName string
 }
 
 // LoadFromEnv reads all configuration from environment variables.
 func LoadFromEnv() (Config, error) {
 	geminiKey := os.Getenv("GEMINI_API_KEY")
-
-	ravenURLsRaw := getEnvOrDefault("RAVENDB_URLS", defaultRavenDBURLs)
-	ravenURLs := strings.Split(ravenURLsRaw, ",")
-	for i := range ravenURLs {
-		ravenURLs[i] = strings.TrimSpace(ravenURLs[i])
-	}
+	mongoURI := strings.TrimSpace(getEnvOrDefault("MONGODB_URI", os.Getenv("MONGO_URL")))
 
 	maxUploadBytes, err := parseInt64Env("MAX_UPLOAD_BYTES", defaultMaxUploadBytes)
 	if err != nil {
 		return Config{}, fmt.Errorf("config: invalid MAX_UPLOAD_BYTES: %w", err)
+	}
+	if mongoURI == "" {
+		return Config{}, fmt.Errorf("config: missing required environment variable: MONGODB_URI")
 	}
 
 	return Config{
@@ -81,9 +80,10 @@ func LoadFromEnv() (Config, error) {
 			APIKey:    geminiKey,
 			ModelName: getEnvOrDefault("GEMINI_MODEL", defaultGeminiModel),
 		},
-		RavenDB: RavenDBConfig{
-			URLs:         ravenURLs,
-			DatabaseName: getEnvOrDefault("RAVENDB_DATABASE", defaultRavenDBName),
+		Mongo: MongoConfig{
+			URI:            mongoURI,
+			DatabaseName:   getEnvOrDefault("MONGODB_DATABASE", defaultMongoDatabase),
+			CollectionName: getEnvOrDefault("MONGODB_COLLECTION", defaultMongoCollection),
 		},
 		Public: getPublicConfig(),
 	}, nil

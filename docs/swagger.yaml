@@ -5,8 +5,8 @@ definitions:
   domain.TranscriptionRecord:
     properties:
       Id:
-        description: ID is auto-assigned by RavenDB as "transcriptions/N-A".
-        example: transcriptions/1-A
+        description: ID is assigned by the application and stored as MongoDB _id.
+        example: 67e3e8f6b4f54d9f0cf0aa11
         type: string
       audioDuration:
         example: 47.3
@@ -32,7 +32,7 @@ definitions:
         example: positive
         type: string
       summary:
-        description: AI analysis from Google Gemini — stored as nested document, schema-free.
+        description: AI analysis from Google Gemini - stored as nested document, schema-free.
         type: string
       transcript:
         description: Transcription result from Gemini audio understanding.
@@ -56,7 +56,7 @@ host: example.com
 info:
   contact: {}
   description: 'POC: receives audio, transcribes and analyzes with Google Gemini,
-    persists in RavenDB.'
+    persists in MongoDB.'
   title: Audio Transcription API
   version: "1.0"
 paths:
@@ -79,7 +79,7 @@ paths:
       - multipart/form-data
       description: |-
         Receives an audio file upload, transcribes and analyzes it with Google Gemini,
-        and persists the result in RavenDB.
+        and persists the result in MongoDB.
       parameters:
       - description: Audio file (mp3, mp4, wav, m4a, ogg, webm, flac — max 25MB)
         in: formData
@@ -102,7 +102,7 @@ paths:
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "500":
-          description: Internal server error or RavenDB failure
+          description: Internal server error or MongoDB failure
           schema:
             $ref: '#/definitions/handler.ErrorResponse'
         "502":

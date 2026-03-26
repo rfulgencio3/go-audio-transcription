@@ -53,7 +53,7 @@ func NewHandler(
 //
 //	@Summary		Transcribe an audio file
 //	@Description	Receives an audio file upload, transcribes and analyzes it with Google Gemini,
-//	@Description	and persists the result in RavenDB.
+//	@Description	and persists the result in MongoDB.
 //	@Tags			transcription
 //	@Accept			multipart/form-data
 //	@Produce		json
@@ -62,7 +62,7 @@ func NewHandler(
 //	@Failure		400		{object}	ErrorResponse	"Missing 'audio' field"
 //	@Failure		413		{object}	ErrorResponse	"File exceeds MAX_UPLOAD_BYTES"
 //	@Failure		503		{object}	ErrorResponse	"Required AI provider is not configured"
-//	@Failure		500		{object}	ErrorResponse	"Internal server error or RavenDB failure"
+//	@Failure		500		{object}	ErrorResponse	"Internal server error or MongoDB failure"
 //	@Failure		502		{object}	ErrorResponse	"Upstream API failure from Gemini"
 //	@Router			/transcribe [post]
 func (h *Handler) Transcribe(w http.ResponseWriter, r *http.Request) {

@@ -2,7 +2,7 @@
 //
 //	@title			Audio Transcription API
 //	@version		1.0
-//	@description	POC: receives audio, transcribes and analyzes with Google Gemini, persists in RavenDB.
+//	@description	POC: receives audio, transcribes and analyzes with Google Gemini, persists in MongoDB.
 //	@host			example.com
 //	@BasePath		/
 //	@accept			multipart/form-data
@@ -72,10 +72,14 @@ func main() {
 		}()
 	}
 
-	// Storage: RavenDB
-	repo, err := storage.NewRavenDBRepository(cfg.RavenDB.URLs, cfg.RavenDB.DatabaseName)
+	// Storage: MongoDB
+	repo, err := storage.NewMongoRepository(
+		cfg.Mongo.URI,
+		cfg.Mongo.DatabaseName,
+		cfg.Mongo.CollectionName,
+	)
 	if err != nil {
-		log.Fatalf("ravendb init error: %v", err)
+		log.Fatalf("mongodb init error: %v", err)
 	}
 	defer repo.Close()
 

@@ -6,6 +6,7 @@ func TestLoadFromEnv_AllowsMissingGeminiKey(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("ADDR", "")
 	t.Setenv("PORT", "")
+	t.Setenv("MONGODB_URI", "mongodb://example")
 
 	cfg, err := LoadFromEnv()
 	if err != nil {
@@ -23,6 +24,7 @@ func TestLoadFromEnv_AllowsMissingGeminiKey(t *testing.T) {
 func TestLoadFromEnv_UsesPlatformPortWhenAddrUnset(t *testing.T) {
 	t.Setenv("ADDR", "")
 	t.Setenv("PORT", "9000")
+	t.Setenv("MONGODB_URI", "mongodb://example")
 
 	cfg, err := LoadFromEnv()
 	if err != nil {
@@ -36,6 +38,7 @@ func TestLoadFromEnv_UsesPlatformPortWhenAddrUnset(t *testing.T) {
 
 func TestLoadFromEnv_ParsesPublicBaseURL(t *testing.T) {
 	t.Setenv("PUBLIC_BASE_URL", "https://go-audio-transcription.up.railway.app/")
+	t.Setenv("MONGODB_URI", "mongodb://example")
 
 	cfg, err := LoadFromEnv()
 	if err != nil {
@@ -50,5 +53,29 @@ func TestLoadFromEnv_ParsesPublicBaseURL(t *testing.T) {
 	}
 	if cfg.Public.Scheme != "https" {
 		t.Fatalf("public scheme = %q", cfg.Public.Scheme)
+	}
+}
+
+func TestLoadFromEnv_UsesMongoURLFallback(t *testing.T) {
+	t.Setenv("MONGODB_URI", "")
+	t.Setenv("MONGO_URL", "mongodb://mongo-service:27017")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatalf("LoadFromEnv() error = %v", err)
+	}
+
+	if cfg.Mongo.URI != "mongodb://mongo-service:27017" {
+		t.Fatalf("mongo uri = %q", cfg.Mongo.URI)
+	}
+}
+
+func TestLoadFromEnv_RequiresMongoURI(t *testing.T) {
+	t.Setenv("MONGODB_URI", "")
+	t.Setenv("MONGO_URL", "")
+
+	_, err := LoadFromEnv()
+	if err == nil {
+		t.Fatal("LoadFromEnv() error = nil, want error")
 	}
 }

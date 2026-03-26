@@ -43,7 +43,7 @@ const docTemplate = `{
         },
         "/transcribe": {
             "post": {
-                "description": "Receives an audio file upload, transcribes and analyzes it with Google Gemini,\nand persists the result in RavenDB.",
+                "description": "Receives an audio file upload, transcribes and analyzes it with Google Gemini,\nand persists the result in MongoDB.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -83,7 +83,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error or RavenDB failure",
+                        "description": "Internal server error or MongoDB failure",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -152,9 +152,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "Id": {
-                    "description": "ID is auto-assigned by RavenDB as \"transcriptions/N-A\".",
+                    "description": "ID is assigned by the application and stored as MongoDB _id.",
                     "type": "string",
-                    "example": "transcriptions/1-A"
+                    "example": "67e3e8f6b4f54d9f0cf0aa11"
                 },
                 "audioDuration": {
                     "type": "number",
@@ -188,7 +188,7 @@ const docTemplate = `{
                     "example": "positive"
                 },
                 "summary": {
-                    "description": "AI analysis from Google Gemini — stored as nested document, schema-free.",
+                    "description": "AI analysis from Google Gemini - stored as nested document, schema-free.",
                     "type": "string"
                 },
                 "transcript": {
@@ -227,7 +227,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Audio Transcription API",
-	Description:      "POC: receives audio, transcribes and analyzes with Google Gemini, persists in RavenDB.",
+	Description:      "POC: receives audio, transcribes and analyzes with Google Gemini, persists in MongoDB.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
