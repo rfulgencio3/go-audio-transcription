@@ -12,7 +12,7 @@ import (
 const (
 	defaultAddr            = ":8080"
 	defaultMaxUploadBytes  = 25 * 1024 * 1024 // 25 MB
-	defaultGeminiModel     = "gemini-1.5-flash"
+	defaultGeminiModel     = "gemini-2.5-flash"
 	defaultMongoDatabase   = "AudioTranscriptions"
 	defaultMongoCollection = "transcriptions"
 	defaultReadTimeout     = 30 * time.Second
@@ -72,7 +72,7 @@ func LoadFromEnv() (Config, error) {
 		},
 		Gemini: GeminiConfig{
 			APIKey:    geminiKey,
-			ModelName: defaultGeminiModel,
+			ModelName: getEnvOrDefault("GEMINI_MODEL", defaultGeminiModel),
 		},
 		Mongo: MongoConfig{
 			URI:            mongoURI,

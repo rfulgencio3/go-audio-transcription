@@ -66,6 +66,7 @@ Only two application variables are required:
 | `MONGODB_URI`    | MongoDB connection URI               |
 
 `MONGO_URL` is also accepted as a fallback for `MONGODB_URI` when you want to reference the Mongo service variable directly.
+`GEMINI_MODEL` is optional when you need to override the default model.
 
 If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable`.
 
@@ -73,7 +74,7 @@ All other runtime settings use internal defaults:
 
 - listen address: `:$PORT` or `:8080`
 - upload limit: `25MB`
-- Gemini model: `gemini-1.5-flash`
+- Gemini model: `gemini-2.5-flash`
 - MongoDB database: `AudioTranscriptions`
 - MongoDB collection: `transcriptions`
 - Swagger public domain: inferred from Railway `RAILWAY_PUBLIC_DOMAIN` when available
@@ -84,6 +85,7 @@ For the `go-audio-transcription` service, a typical Railway setup is:
 
 ```env
 GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash
 MONGODB_URI=${{Mongo.MONGO_URL}}/?authSource=admin
 ```
 

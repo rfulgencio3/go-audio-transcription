@@ -4,6 +4,7 @@ import "testing"
 
 func TestLoadFromEnv_AllowsMissingGeminiKey(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
+	t.Setenv("GEMINI_MODEL", "")
 	t.Setenv("PORT", "")
 	t.Setenv("MONGODB_URI", "mongodb://example")
 
@@ -29,6 +30,20 @@ func TestLoadFromEnv_AllowsMissingGeminiKey(t *testing.T) {
 	}
 	if cfg.Server.MaxUploadBytes != defaultMaxUploadBytes {
 		t.Fatalf("max upload bytes = %d, want %d", cfg.Server.MaxUploadBytes, defaultMaxUploadBytes)
+	}
+}
+
+func TestLoadFromEnv_UsesGeminiModelOverride(t *testing.T) {
+	t.Setenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+	t.Setenv("MONGODB_URI", "mongodb://example")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatalf("LoadFromEnv() error = %v", err)
+	}
+
+	if cfg.Gemini.ModelName != "gemini-2.5-flash-lite" {
+		t.Fatalf("gemini model = %q", cfg.Gemini.ModelName)
 	}
 }
 
