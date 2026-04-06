@@ -2,7 +2,6 @@
 package config
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -10,20 +9,17 @@ import (
 )
 
 const (
-	defaultAddr            = ":8080"
-	defaultMaxUploadBytes  = 25 * 1024 * 1024 // 25 MB
-	defaultGeminiModel     = "gemini-2.5-flash"
-	defaultMongoDatabase   = "AudioTranscriptions"
-	defaultMongoCollection = "transcriptions"
-	defaultReadTimeout     = 30 * time.Second
-	defaultWriteTimeout    = 120 * time.Second
+	defaultAddr           = ":8080"
+	defaultMaxUploadBytes = 25 * 1024 * 1024 // 25 MB
+	defaultGeminiModel    = "gemini-2.5-flash"
+	defaultReadTimeout    = 30 * time.Second
+	defaultWriteTimeout   = 120 * time.Second
 )
 
 // Config holds all runtime configuration for the application.
 type Config struct {
 	Server ServerConfig
 	Gemini GeminiConfig
-	Mongo  MongoConfig
 	Public PublicConfig
 }
 
@@ -48,20 +44,9 @@ type GeminiConfig struct {
 	ModelName string
 }
 
-// MongoConfig holds connection settings for MongoDB.
-type MongoConfig struct {
-	URI            string
-	DatabaseName   string
-	CollectionName string
-}
-
 // LoadFromEnv reads all configuration from environment variables.
 func LoadFromEnv() (Config, error) {
 	geminiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
-	mongoURI := strings.TrimSpace(getEnvOrDefault("MONGODB_URI", os.Getenv("MONGO_URL")))
-	if mongoURI == "" {
-		return Config{}, fmt.Errorf("config: missing required environment variable: MONGODB_URI")
-	}
 
 	return Config{
 		Server: ServerConfig{
@@ -73,11 +58,6 @@ func LoadFromEnv() (Config, error) {
 		Gemini: GeminiConfig{
 			APIKey:    geminiKey,
 			ModelName: getEnvOrDefault("GEMINI_MODEL", defaultGeminiModel),
-		},
-		Mongo: MongoConfig{
-			URI:            mongoURI,
-			DatabaseName:   defaultMongoDatabase,
-			CollectionName: defaultMongoCollection,
 		},
 		Public: getPublicConfig(),
 	}, nil

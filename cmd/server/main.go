@@ -25,7 +25,6 @@ import (
 	"github.com/rfulgencio3/go-audio-transcription/docs"
 	"github.com/rfulgencio3/go-audio-transcription/internal/ai"
 	"github.com/rfulgencio3/go-audio-transcription/internal/handler"
-	"github.com/rfulgencio3/go-audio-transcription/internal/storage"
 	"github.com/rfulgencio3/go-audio-transcription/internal/transcription"
 )
 
@@ -72,24 +71,12 @@ func main() {
 		}()
 	}
 
-	// Storage: MongoDB
-	repo, err := storage.NewMongoRepository(
-		cfg.Mongo.URI,
-		cfg.Mongo.DatabaseName,
-		cfg.Mongo.CollectionName,
-	)
-	if err != nil {
-		log.Fatalf("mongodb init error: %v", err)
-	}
-	defer repo.Close()
-
 	// --- Wire HTTP routes ---
-	h := handler.NewHandler(transcriber, analyzer, repo, cfg.Server.MaxUploadBytes)
+	h := handler.NewHandler(transcriber, analyzer, cfg.Server.MaxUploadBytes)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", h.Health)
 	mux.HandleFunc("POST /transcribe", h.Transcribe)
-	mux.HandleFunc("GET /transcriptions", h.ListTranscriptions)
 	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 
 	srv := &http.Server{
