@@ -12,15 +12,17 @@ const (
 	defaultAddr           = ":8080"
 	defaultMaxUploadBytes = 25 * 1024 * 1024 // 25 MB
 	defaultGeminiModel    = "gemini-2.5-flash"
+	defaultEnableAnalysis = false
 	defaultReadTimeout    = 30 * time.Second
 	defaultWriteTimeout   = 120 * time.Second
 )
 
 // Config holds all runtime configuration for the application.
 type Config struct {
-	Server ServerConfig
-	Gemini GeminiConfig
-	Public PublicConfig
+	Server  ServerConfig
+	Gemini  GeminiConfig
+	Public  PublicConfig
+	Feature FeatureConfig
 }
 
 // ServerConfig holds HTTP server settings.
@@ -44,6 +46,11 @@ type GeminiConfig struct {
 	ModelName string
 }
 
+// FeatureConfig holds optional runtime feature toggles.
+type FeatureConfig struct {
+	EnableTranscriptAnalysis bool
+}
+
 // LoadFromEnv reads all configuration from environment variables.
 func LoadFromEnv() (Config, error) {
 	geminiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
@@ -60,6 +67,9 @@ func LoadFromEnv() (Config, error) {
 			ModelName: getEnvOrDefault("GEMINI_MODEL", defaultGeminiModel),
 		},
 		Public: getPublicConfig(),
+		Feature: FeatureConfig{
+			EnableTranscriptAnalysis: getBoolEnvOrDefault("ENABLE_TRANSCRIPT_ANALYSIS", defaultEnableAnalysis),
+		},
 	}, nil
 }
 
@@ -75,6 +85,20 @@ func getEnvOrDefault(key, defaultVal string) string {
 		return v
 	}
 	return defaultVal
+}
+
+func getBoolEnvOrDefault(key string, defaultVal bool) bool {
+	value := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	switch value {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	case "":
+		return defaultVal
+	default:
+		return defaultVal
+	}
 }
 
 func getPublicConfig() PublicConfig {

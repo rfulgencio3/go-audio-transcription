@@ -2,7 +2,7 @@
 //
 //	@title			Audio Transcription API
 //	@version		1.0
-//	@description	POC: receives audio, captures the complete transcript with Google Gemini, optionally enriches it, and persists in MongoDB.
+//	@description	POC: receives audio, captures the complete transcript with Google Gemini, and can optionally enrich the transcript with extra analysis.
 //	@host			example.com
 //	@BasePath		/
 //	@accept			multipart/form-data
@@ -37,13 +37,13 @@ func main() {
 
 	// --- Build dependencies ---
 
-	// Transcription + analysis: Google Gemini
+	// Transcription + optional analysis: Google Gemini
 	var transcriber transcription.Transcriber
 	var analyzer ai.Analyzer
 	if cfg.Gemini.APIKey == "" {
 		log.Printf("warn: GEMINI_API_KEY is not set; /transcribe pipeline is disabled")
 		transcriber = transcription.NewDisabledTranscriber("GEMINI_API_KEY is not set")
-		analyzer = ai.NewDisabledAnalyzer("GEMINI_API_KEY is not set")
+		analyzer = nil
 	} else {
 		initCtx, initCancel := context.WithTimeout(context.Background(), 15*time.Second)
 		geminiTranscriber, err := transcription.NewGeminiTranscriber(initCtx, cfg.Gemini.APIKey, cfg.Gemini.ModelName)
@@ -51,24 +51,32 @@ func main() {
 			initCancel()
 			log.Fatalf("gemini transcription init error: %v", err)
 		}
-		gemini, err := ai.NewGeminiAnalyzer(initCtx, cfg.Gemini.APIKey, cfg.Gemini.ModelName)
-		initCancel()
-		if err != nil {
-			_ = geminiTranscriber.Close()
-			log.Fatalf("gemini init error: %v", err)
-		}
 		transcriber = geminiTranscriber
-		analyzer = gemini
 		defer func() {
 			if err := geminiTranscriber.Close(); err != nil {
 				log.Printf("warn: closing Gemini transcription client: %v", err)
 			}
 		}()
-		defer func() {
-			if err := gemini.Close(); err != nil {
-				log.Printf("warn: closing Gemini client: %v", err)
+		initCancel()
+
+		if cfg.Feature.EnableTranscriptAnalysis {
+			initCtx, initCancel = context.WithTimeout(context.Background(), 15*time.Second)
+			gemini, err := ai.NewGeminiAnalyzer(initCtx, cfg.Gemini.APIKey, cfg.Gemini.ModelName)
+			initCancel()
+			if err != nil {
+				_ = geminiTranscriber.Close()
+				log.Fatalf("gemini analysis init error: %v", err)
 			}
-		}()
+			analyzer = gemini
+			defer func() {
+				if err := gemini.Close(); err != nil {
+					log.Printf("warn: closing Gemini client: %v", err)
+				}
+			}()
+		} else {
+			log.Printf("info: transcript analysis is disabled; returning transcript only")
+			analyzer = nil
+		}
 	}
 
 	// --- Wire HTTP routes ---

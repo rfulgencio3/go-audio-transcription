@@ -5,6 +5,7 @@ import "testing"
 func TestLoadFromEnv_AllowsMissingGeminiKey(t *testing.T) {
 	t.Setenv("GEMINI_API_KEY", "")
 	t.Setenv("GEMINI_MODEL", "")
+	t.Setenv("ENABLE_TRANSCRIPT_ANALYSIS", "")
 	t.Setenv("PORT", "")
 
 	cfg, err := LoadFromEnv()
@@ -24,6 +25,9 @@ func TestLoadFromEnv_AllowsMissingGeminiKey(t *testing.T) {
 	if cfg.Server.MaxUploadBytes != defaultMaxUploadBytes {
 		t.Fatalf("max upload bytes = %d, want %d", cfg.Server.MaxUploadBytes, defaultMaxUploadBytes)
 	}
+	if cfg.Feature.EnableTranscriptAnalysis != defaultEnableAnalysis {
+		t.Fatalf("enable transcript analysis = %v, want %v", cfg.Feature.EnableTranscriptAnalysis, defaultEnableAnalysis)
+	}
 }
 
 func TestLoadFromEnv_UsesGeminiModelOverride(t *testing.T) {
@@ -36,6 +40,19 @@ func TestLoadFromEnv_UsesGeminiModelOverride(t *testing.T) {
 
 	if cfg.Gemini.ModelName != "gemini-2.5-flash-lite" {
 		t.Fatalf("gemini model = %q", cfg.Gemini.ModelName)
+	}
+}
+
+func TestLoadFromEnv_UsesTranscriptAnalysisOverride(t *testing.T) {
+	t.Setenv("ENABLE_TRANSCRIPT_ANALYSIS", "true")
+
+	cfg, err := LoadFromEnv()
+	if err != nil {
+		t.Fatalf("LoadFromEnv() error = %v", err)
+	}
+
+	if !cfg.Feature.EnableTranscriptAnalysis {
+		t.Fatalf("enable transcript analysis = %v, want true", cfg.Feature.EnableTranscriptAnalysis)
 	}
 }
 

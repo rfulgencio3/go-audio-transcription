@@ -59,7 +59,10 @@ Only one application variable is required:
 | Variable         | Description                          |
 |------------------|--------------------------------------|
 | `GEMINI_API_KEY` | Google Gemini API key                |
+| `ENABLE_TRANSCRIPT_ANALYSIS` | Enables optional summary/key points/sentiment generation |
+
 `GEMINI_MODEL` is optional when you need to override the default model.
+`ENABLE_TRANSCRIPT_ANALYSIS` is optional and defaults to `false`.
 
 If `GEMINI_API_KEY` is missing, the server still starts so the container does not enter a restart loop, but `POST /transcribe` returns `503 Service Unavailable`.
 
@@ -68,6 +71,7 @@ All other runtime settings use internal defaults:
 - listen address: `:$PORT` or `:8080`
 - upload limit: `25MB`
 - Gemini model: `gemini-2.5-flash`
+- Transcript analysis: disabled by default
 - Swagger public domain: inferred from Railway `RAILWAY_PUBLIC_DOMAIN` when available
 
 ### Railway Example
@@ -77,6 +81,7 @@ For the `go-audio-transcription` service, a typical Railway setup is:
 ```env
 GEMINI_API_KEY=...
 GEMINI_MODEL=gemini-2.5-flash
+ENABLE_TRANSCRIPT_ANALYSIS=false
 ```
 
 ### Run
